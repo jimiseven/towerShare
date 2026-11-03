@@ -1,0 +1,24 @@
+<resources>
+    <string name="app_name">TowerShare</string>
+    <string name="share_to_windows">Enviar a PC (TowerShare)</string>
+
+    <string name="service_title">Servidor TowerShare Activo</string>
+    <string name="service_listening">Esperando conexión Bluetooth desde Windows…</string>
+    <string name="service_connected">Conectado a Windows (%s)</string>
+
+    <string name="status_server_running">Servidor activo: esperando conexión</string>
+    <string name="status_server_stopped">Servidor detenido</string>
+    <string name="status_connected">Conectado a PC: %s</string>
+
+    <string name="btn_start_service">Iniciar Servidor</string>
+    <string name="btn_stop_service">Detener Servidor</string>
+    <string name="btn_grant_overlay">Autorizar \"Aparecer encima\" (Opción B)</string>
+    <string name="btn_bt_settings">Abrir Ajustes Bluetooth</string>
+
+    <string name="overlay_info_title">Permiso Especial (Opción B)</string>
+    <string name="overlay_info_desc">Para que Android copie automáticamente al portapapeles sin pedir confirmación cada vez que Windows envíe texto, se requiere el permiso de \"Aparecer encima\".</string>
+
+    <string name="perm_bt_needed">Se requieren permisos de Bluetooth para sincronizar.</string>
+    <string name="toast_sent_to_windows">Enviado a Windows por Bluetooth</string>
+    <string name="toast_not_connected">TowerShare no está conectado a Windows</string>
+</resources>

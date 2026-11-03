@@ -1,0 +1,2 @@
+TowerShare_Setup.exe filter=lfs diff=lfs merge=lfs -text
+TowerShareWindows.exe filter=lfs diff=lfs merge=lfs -text

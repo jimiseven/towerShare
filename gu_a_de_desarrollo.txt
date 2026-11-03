@@ -1,0 +1,73 @@
+GUÍA DE PROGRAMACIÓN: SINCRONIZACIÓN DE PORTAPAPELES VÍA BLUETOOTH
+====================================================================
+Esta guía explica cómo desarrollar una aplicación para compartir el 
+portapapeles (solo texto) entre Windows 10+ y Android 12+ mediante Bluetooth.
+
+1. ARQUITECTURA GENERAL
+-----------------------
+El sistema funcionará con un modelo Cliente-Servidor utilizando Bluetooth Classic (RFCOMM / SPP - Serial Port Profile).
+- ANDROID (Servidor): Estará a la escucha de conexiones entrantes.
+- WINDOWS (Cliente): Tendrá un botón de "Conectar" que buscará el celular emparejado y establecerá la conexión.
+- PROTOCOLO: Una vez conectados, ambos mantendrán un "socket" abierto para enviarse texto UTF-8 cada vez que el portapapeles cambie.
+
+2. DESARROLLO EN ANDROID 12+ (EL SERVIDOR)
+------------------------------------------
+Herramienta: Android Studio.
+Lenguaje recomendado: Kotlin.
+
+A) Permisos Especiales (Crítico en Android 12+):
+A partir de Android 12, Google introdujo nuevos permisos estrictos. En tu archivo AndroidManifest.xml necesitas:
+- <uses-permission android:name="android.permission.BLUETOOTH_CONNECT" /> (Para conectarte al socket).
+- <uses-permission android:name="android.permission.BLUETOOTH_SCAN" /> (Si necesitas buscar, aunque al ser servidor, CONNECT es el vital).
+- Además, el usuario deberá aprobar este permiso explícitamente la primera vez que abra la app.
+
+B) Acceso al Portapapeles (ClipboardManager):
+Usarás `getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager`.
+*Nota sobre Android 10+:* Android restringe leer el portapapeles en segundo plano. Para que funcione bien sin tener la app abierta en pantalla, tu aplicación deberá ejecutarse como un "Servicio en Primer Plano" (Foreground Service), mostrando una notificación persistente de "Sincronizando portapapeles...".
+
+C) Lógica Bluetooth:
+1. Usar `BluetoothAdapter` para crear un `BluetoothServerSocket`.
+2. Asignar un UUID único (Ej: fa87c0d0-afac-11de-8a39-0800200c9a66).
+3. Quedarse a la espera de la conexión de Windows con `serverSocket.accept()`.
+4. Una vez conectado, iniciar dos hilos (threads): uno para escuchar lo que llega de Windows y otro para enviar lo que se copia en Android.
+
+3. DESARROLLO EN WINDOWS 10+ (EL CLIENTE)
+-----------------------------------------
+Herramienta: Visual Studio.
+Lenguaje recomendado: C# con .NET (WinForms o WPF para una interfaz sencilla).
+
+A) La API de Bluetooth:
+A partir de Windows 10, Microsoft incluyó las APIs de Windows Runtime (WinRT). Usarás el espacio de nombres `Windows.Devices.Bluetooth.Rfcomm`. No necesitas librerías externas de terceros.
+
+B) Lógica de Conexión:
+1. El PC y el celular deben estar emparejados previamente desde la configuración de Windows.
+2. Al presionar "Conectar" en tu app, usarás `DeviceInformation.FindAllAsync` para listar los dispositivos Bluetooth vinculados.
+3. Seleccionas tu celular y usas el mismo UUID que programaste en Android para solicitar conexión al servicio RFCOMM.
+4. Si es exitoso, abres un `StreamSocket` para enviar y recibir datos.
+
+C) Acceso al Portapapeles en Windows:
+Windows es más permisivo. Usando `System.Windows.Forms.Clipboard` puedes leer y escribir texto. 
+Para saber cuándo el usuario copió algo nuevo, puedes usar una función nativa (un hook) llamada `AddClipboardFormatListener`, que le avisa a tu app automáticamente cuando el portapapeles de Windows cambia.
+
+4. EL PROBLEMA DEL "ECO" (Bucle infinito)
+-----------------------------------------
+El error más común al programar esto es un bucle infinito:
+1. Copias algo en Windows.
+2. Windows se lo manda a Android.
+3. Android lo recibe y lo pone en su portapapeles.
+4. La app de Android detecta que el portapapeles cambió, ¡y se lo vuelve a mandar a Windows!
+5. El ciclo se repite hasta colapsar el programa.
+
+¿Cómo evitarlo?
+Tanto en la app de Windows como en la de Android, debes guardar en una variable el "último_texto_recibido". 
+Antes de enviar un texto por Bluetooth, el programa debe comparar:
+"¿Lo que acaban de copiar en este sistema es exactamente igual al último_texto_recibido?". Si la respuesta es SÍ, se ignora y no se envía. Si es NO, se envía por Bluetooth.
+
+5. RESUMEN DEL FLUJO DE TRABAJO
+-------------------------------
+1. Emparejas el celular y la PC por Bluetooth desde los ajustes del sistema.
+2. Abres la app en Android (inicia el servidor y se queda escuchando).
+3. Abres la app en Windows, presionas "Conectar".
+4. Escribes "Hola" en la PC, le das a copiar.
+5. Windows detecta la copia, valida que sea texto nuevo, y lo manda por el socket Bluetooth.
+6. Android recibe los bytes, los convierte a texto, y los pega en su portapapeles local.
