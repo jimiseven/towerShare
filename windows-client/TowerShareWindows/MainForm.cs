@@ -1,5 +1,6 @@
 using System;
 using System.Drawing;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Microsoft.Win32;
@@ -11,6 +12,21 @@ namespace TowerShareWindows
         private const string RunRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
         private const string AppSettingsRegistryKey = @"Software\TowerShare";
         private const string AppRegistryName = "TowerShare";
+
+        // Registro de Atajo Global: Ctrl + Alt + Shift + T
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool RegisterHotKey(IntPtr hWnd, int id, uint fsModifiers, uint vk);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        private static extern bool UnregisterHotKey(IntPtr hWnd, int id);
+
+        private const int HOTKEY_ID = 9001;
+        private const uint MOD_ALT = 0x0001;
+        private const uint MOD_CONTROL = 0x0002;
+        private const uint MOD_SHIFT = 0x0004;
+        private const uint MOD_NOREPEAT = 0x4000;
+        private const uint VK_T = 0x54; // Código de tecla 'T'
+        private const int WM_HOTKEY = 0x0312;
 
         private readonly BluetoothClient _btClient = new();
         private ClipboardMonitor? _clipboardMonitor;
@@ -45,12 +61,21 @@ namespace TowerShareWindows
             {
                 RestoreWindow();
             }
+            // Atajo de teclado global presionado (Ctrl + Alt + Shift + T)
+            else if (m.Msg == WM_HOTKEY && m.WParam.ToInt32() == HOTKEY_ID)
+            {
+                ToggleWindowVisibility();
+            }
+
             base.WndProc(ref m);
         }
 
         private async void MainForm_Load(object sender, EventArgs e)
         {
             LoadPersistentSettings();
+
+            // Registrar atajo de teclado global en Windows
+            RegisterGlobalHotkey();
 
             _clipboardMonitor = new ClipboardMonitor();
             _clipboardMonitor.ClipboardChanged += OnLocalClipboardChanged;
@@ -87,6 +112,43 @@ namespace TowerShareWindows
             {
                 AppendLog($"Auto-conectando al dispositivo guardado: {_lastConnectedDeviceName}...");
                 _ = ConnectToDeviceAsync(_lastConnectedDeviceId, _lastConnectedDeviceName ?? "Android");
+            }
+        }
+
+        private void RegisterGlobalHotkey()
+        {
+            try
+            {
+                bool registered = RegisterHotKey(Handle, HOTKEY_ID, MOD_CONTROL | MOD_ALT | MOD_SHIFT | MOD_NOREPEAT, VK_T);
+                if (registered)
+                {
+                    AppendLog("Atajo global activado: Ctrl + Alt + Shift + T");
+                }
+                else
+                {
+                    AppendLog("Aviso: No se pudo registrar el atajo global (posiblemente en uso por otra app).");
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Error al registrar atajo global: {ex.Message}");
+            }
+        }
+
+        private void ToggleWindowVisibility()
+        {
+            if (Visible && WindowState != FormWindowState.Minimized)
+            {
+                Hide();
+                ShowInTaskbar = false;
+                if (chkStealthMode.Checked)
+                {
+                    notifyIcon.Visible = false;
+                }
+            }
+            else
+            {
+                RestoreWindow();
             }
         }
 
@@ -385,6 +447,7 @@ namespace TowerShareWindows
             }
 
             _isExiting = true;
+            UnregisterHotKey(Handle, HOTKEY_ID);
             _reconnectTimer.Stop();
             _clipboardMonitor?.Dispose();
             _btClient.Dispose();
