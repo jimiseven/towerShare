@@ -9,6 +9,7 @@ namespace TowerShareWindows
     public partial class MainForm : Form
     {
         private const string RunRegistryKey = @"Software\Microsoft\Windows\CurrentVersion\Run";
+        private const string AppSettingsRegistryKey = @"Software\TowerShare";
         private const string AppRegistryName = "TowerShare";
 
         private readonly BluetoothClient _btClient = new();
@@ -37,9 +38,19 @@ namespace TowerShareWindows
             }
         }
 
+        protected override void WndProc(ref Message m)
+        {
+            // Mensaje nativo de Windows para reabrir la interfaz gráfica cuando corre en Modo Fantasma
+            if (Program.ShowUiMessage != 0 && m.Msg == Program.ShowUiMessage)
+            {
+                RestoreWindow();
+            }
+            base.WndProc(ref m);
+        }
+
         private async void MainForm_Load(object sender, EventArgs e)
         {
-            CheckWindowsAutostartStatus();
+            LoadPersistentSettings();
 
             _clipboardMonitor = new ClipboardMonitor();
             _clipboardMonitor.ClipboardChanged += OnLocalClipboardChanged;
@@ -54,22 +65,79 @@ namespace TowerShareWindows
                 {
                     Hide();
                     ShowInTaskbar = false;
+                    if (chkStealthMode.Checked)
+                    {
+                        notifyIcon.Visible = false; // Modo Fantasma: Cero presencia en la bandeja ni en la flecha ^
+                    }
+                    else
+                    {
+                        notifyIcon.Visible = true;
+                    }
                 }));
+            }
+            else
+            {
+                notifyIcon.Visible = true;
             }
 
             await LoadPairedDevicesAsync();
+
+            // Auto-conectar al dispositivo guardado si existe
+            if (!string.IsNullOrEmpty(_lastConnectedDeviceId))
+            {
+                AppendLog($"Auto-conectando al dispositivo guardado: {_lastConnectedDeviceName}...");
+                _ = ConnectToDeviceAsync(_lastConnectedDeviceId, _lastConnectedDeviceName ?? "Android");
+            }
         }
 
-        private void CheckWindowsAutostartStatus()
+        private void LoadPersistentSettings()
         {
             try
             {
-                using var key = Registry.CurrentUser.OpenSubKey(RunRegistryKey, false);
-                chkStartWithWindows.Checked = key?.GetValue(AppRegistryName) != null;
+                // Estado de arranque con Windows
+                using (var runKey = Registry.CurrentUser.OpenSubKey(RunRegistryKey, false))
+                {
+                    chkStartWithWindows.Checked = runKey?.GetValue(AppRegistryName) != null;
+                }
+
+                // Ajustes propios de TowerShare
+                using var key = Registry.CurrentUser.CreateSubKey(AppSettingsRegistryKey);
+                if (key != null)
+                {
+                    _lastConnectedDeviceId = key.GetValue("LastDeviceId") as string;
+                    _lastConnectedDeviceName = key.GetValue("LastDeviceName") as string;
+                    chkStealthMode.Checked = Convert.ToInt32(key.GetValue("StealthMode", 1)) == 1;
+                    chkAutoReconnect.Checked = Convert.ToInt32(key.GetValue("AutoReconnect", 1)) == 1;
+                }
             }
-            catch
+            catch (Exception ex)
             {
-                // Ignorar si no se puede leer el registro
+                AppendLog($"Error al leer configuración: {ex.Message}");
+            }
+        }
+
+        private void SavePersistentSettings()
+        {
+            try
+            {
+                using var key = Registry.CurrentUser.CreateSubKey(AppSettingsRegistryKey);
+                if (key != null)
+                {
+                    if (!string.IsNullOrEmpty(_lastConnectedDeviceId))
+                    {
+                        key.SetValue("LastDeviceId", _lastConnectedDeviceId);
+                    }
+                    if (!string.IsNullOrEmpty(_lastConnectedDeviceName))
+                    {
+                        key.SetValue("LastDeviceName", _lastConnectedDeviceName);
+                    }
+                    key.SetValue("StealthMode", chkStealthMode.Checked ? 1 : 0);
+                    key.SetValue("AutoReconnect", chkAutoReconnect.Checked ? 1 : 0);
+                }
+            }
+            catch (Exception ex)
+            {
+                AppendLog($"Error al guardar configuración: {ex.Message}");
             }
         }
 
@@ -97,6 +165,20 @@ namespace TowerShareWindows
             }
         }
 
+        private void ChkStealthMode_CheckedChanged(object sender, EventArgs e)
+        {
+            SavePersistentSettings();
+            if (WindowState == FormWindowState.Minimized || !Visible)
+            {
+                notifyIcon.Visible = !chkStealthMode.Checked;
+            }
+        }
+
+        private void ChkAutoReconnect_CheckedChanged(object sender, EventArgs e)
+        {
+            SavePersistentSettings();
+        }
+
         private async Task LoadPairedDevicesAsync()
         {
             AppendLog("Buscando dispositivos Bluetooth vinculados en Windows...");
@@ -105,20 +187,27 @@ namespace TowerShareWindows
             try
             {
                 var devices = await BluetoothClient.GetPairedDevicesAsync();
-                foreach (var device in devices)
+                int selectedIndex = -1;
+
+                for (int i = 0; i < devices.Count; i++)
                 {
-                    cmbDevices.Items.Add(device);
+                    cmbDevices.Items.Add(devices[i]);
+                    if (!string.IsNullOrEmpty(_lastConnectedDeviceId) && devices[i].Id == _lastConnectedDeviceId)
+                    {
+                        selectedIndex = i;
+                    }
                 }
 
-                if (cmbDevices.Items.Count > 0)
+                if (selectedIndex >= 0)
+                {
+                    cmbDevices.SelectedIndex = selectedIndex;
+                }
+                else if (cmbDevices.Items.Count > 0)
                 {
                     cmbDevices.SelectedIndex = 0;
-                    AppendLog($"Se encontraron {devices.Count} dispositivos vinculados.");
                 }
-                else
-                {
-                    AppendLog("No se encontraron dispositivos vinculados. Empareja tu celular desde Configuración de Windows.");
-                }
+
+                AppendLog($"Se encontraron {devices.Count} dispositivos vinculados.");
             }
             catch (Exception ex)
             {
@@ -148,6 +237,7 @@ namespace TowerShareWindows
 
             _lastConnectedDeviceId = selectedDevice.Id;
             _lastConnectedDeviceName = selectedDevice.Name;
+            SavePersistentSettings();
 
             await ConnectToDeviceAsync(selectedDevice.Id, selectedDevice.Name);
         }
@@ -263,21 +353,34 @@ namespace TowerShareWindows
 
         private void MainForm_Resize(object sender, EventArgs e)
         {
-            // Si el usuario minimiza la ventana, la ocultamos por completo de la barra de tareas
+            // Al minimizar la ventana, se oculta de la barra de tareas
             if (WindowState == FormWindowState.Minimized && chkStartMinimized.Checked)
             {
                 Hide();
                 ShowInTaskbar = false;
+
+                // Modo Fantasma: se quita también de la bandeja del sistema (flecha ^)
+                if (chkStealthMode.Checked)
+                {
+                    notifyIcon.Visible = false;
+                }
             }
         }
 
         private void MainForm_FormClosing(object sender, FormClosingEventArgs e)
         {
+            // Cerrar con la 'X' minimiza a segundo plano silencioso
             if (!_isExiting && chkStartMinimized.Checked && e.CloseReason == CloseReason.UserClosing)
             {
                 e.Cancel = true;
                 Hide();
                 ShowInTaskbar = false;
+
+                // Modo Fantasma: se quita también de la bandeja del sistema (flecha ^)
+                if (chkStealthMode.Checked)
+                {
+                    notifyIcon.Visible = false;
+                }
                 return;
             }
 
@@ -293,6 +396,7 @@ namespace TowerShareWindows
             Show();
             WindowState = FormWindowState.Normal;
             ShowInTaskbar = true;
+            notifyIcon.Visible = true; // Visible temporalmente mientras la ventana de configuración está abierta
             BringToFront();
             Activate();
         }

@@ -25,6 +25,7 @@ namespace TowerShareWindows
             this.chkAutoReconnect = new System.Windows.Forms.CheckBox();
             this.chkStartMinimized = new System.Windows.Forms.CheckBox();
             this.chkStartWithWindows = new System.Windows.Forms.CheckBox();
+            this.chkStealthMode = new System.Windows.Forms.CheckBox();
             this.txtLog = new System.Windows.Forms.TextBox();
             this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.trayContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -51,9 +52,10 @@ namespace TowerShareWindows
             this.grpConnection.Controls.Add(this.chkAutoReconnect);
             this.grpConnection.Controls.Add(this.chkStartMinimized);
             this.grpConnection.Controls.Add(this.chkStartWithWindows);
+            this.grpConnection.Controls.Add(this.chkStealthMode);
             this.grpConnection.Location = new System.Drawing.Point(12, 12);
             this.grpConnection.Name = "grpConnection";
-            this.grpConnection.Size = new System.Drawing.Size(460, 170);
+            this.grpConnection.Size = new System.Drawing.Size(460, 195);
             this.grpConnection.TabIndex = 0;
             this.grpConnection.TabStop = false;
             this.grpConnection.Text = "Conexión Bluetooth";
@@ -128,6 +130,7 @@ namespace TowerShareWindows
             this.chkAutoReconnect.TabIndex = 6;
             this.chkAutoReconnect.Text = "Reconectar si se desconecta";
             this.chkAutoReconnect.UseVisualStyleBackColor = true;
+            this.chkAutoReconnect.CheckedChanged += new System.EventHandler(this.ChkAutoReconnect_CheckedChanged);
             // 
             // chkStartMinimized
             // 
@@ -152,13 +155,28 @@ namespace TowerShareWindows
             this.chkStartWithWindows.UseVisualStyleBackColor = true;
             this.chkStartWithWindows.CheckedChanged += new System.EventHandler(this.ChkStartWithWindows_CheckedChanged);
             // 
+            // chkStealthMode
+            // 
+            this.chkStealthMode.AutoSize = true;
+            this.chkStealthMode.Checked = true;
+            this.chkStealthMode.CheckState = System.Windows.Forms.CheckState.Checked;
+            this.chkStealthMode.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.chkStealthMode.ForeColor = System.Drawing.Color.DarkSlateBlue;
+            this.chkStealthMode.Location = new System.Drawing.Point(15, 165);
+            this.chkStealthMode.Name = "chkStealthMode";
+            this.chkStealthMode.Size = new System.Drawing.Size(425, 19);
+            this.chkStealthMode.TabIndex = 9;
+            this.chkStealthMode.Text = "Modo Fantasma (100% invisible: sin icono en la barra ni en la flecha ^)";
+            this.chkStealthMode.UseVisualStyleBackColor = true;
+            this.chkStealthMode.CheckedChanged += new System.EventHandler(this.ChkStealthMode_CheckedChanged);
+            // 
             // grpLog
             // 
             this.grpLog.Controls.Add(this.btnClearLog);
             this.grpLog.Controls.Add(this.txtLog);
-            this.grpLog.Location = new System.Drawing.Point(12, 190);
+            this.grpLog.Location = new System.Drawing.Point(12, 215);
             this.grpLog.Name = "grpLog";
-            this.grpLog.Size = new System.Drawing.Size(460, 200);
+            this.grpLog.Size = new System.Drawing.Size(460, 195);
             this.grpLog.TabIndex = 1;
             this.grpLog.TabStop = false;
             this.grpLog.Text = "Registro de Actividad";
@@ -172,12 +190,12 @@ namespace TowerShareWindows
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(430, 140);
+            this.txtLog.Size = new System.Drawing.Size(430, 135);
             this.txtLog.TabIndex = 0;
             // 
             // btnClearLog
             // 
-            this.btnClearLog.Location = new System.Drawing.Point(345, 168);
+            this.btnClearLog.Location = new System.Drawing.Point(345, 163);
             this.btnClearLog.Name = "btnClearLog";
             this.btnClearLog.Size = new System.Drawing.Size(100, 24);
             this.btnClearLog.TabIndex = 1;
@@ -225,14 +243,14 @@ namespace TowerShareWindows
             // 
             this.notifyIcon.ContextMenuStrip = this.trayContextMenu;
             this.notifyIcon.Text = "TowerShare (Desconectado)";
-            this.notifyIcon.Visible = true;
+            this.notifyIcon.Visible = false;
             this.notifyIcon.DoubleClick += new System.EventHandler(this.NotifyIcon_DoubleClick);
             // 
             // MainForm
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(484, 405);
+            this.ClientSize = new System.Drawing.Size(484, 420);
             this.Controls.Add(this.grpLog);
             this.Controls.Add(this.grpConnection);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -261,6 +279,7 @@ namespace TowerShareWindows
         private System.Windows.Forms.CheckBox chkAutoReconnect;
         private System.Windows.Forms.CheckBox chkStartMinimized;
         private System.Windows.Forms.CheckBox chkStartWithWindows;
+        private System.Windows.Forms.CheckBox chkStealthMode;
         private System.Windows.Forms.GroupBox grpLog;
         private System.Windows.Forms.TextBox txtLog;
         private System.Windows.Forms.Button btnClearLog;

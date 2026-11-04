@@ -208,7 +208,7 @@ namespace TowerShareInstaller
                             @"Microsoft\Windows\Start Menu\Programs"
                         );
                         string shortcutPath = Path.Combine(startMenuDir, "TowerShare.lnk");
-                        CreateShortcut(shortcutPath, targetExe, "--minimized");
+                        CreateShortcut(shortcutPath, targetExe, "");
                     }
 
                     if (_chkDesktop.Checked)

@@ -14,8 +14,10 @@
   La comunicación ocurre directamente entre tu PC y tu teléfono a través de Bluetooth local (canal RFCOMM privado). No depende de Wi-Fi, internet ni cuentas externas.
 * **Control de Eco (Loop-Free):**  
   Ambos clientes recuerdan el último texto recibido para evitar bucles infinitos de retroalimentación.
-* **Minimizado Silencioso y Cero Notificaciones:**  
-  La app de Windows corre de manera 100% silenciosa (sin globos ni avisos emergentes que interrumpan tu trabajo). Al minimizar o cerrar con la 'X', se oculta completamente de la barra de tareas y permanece únicamente en la bandeja del sistema (*System Tray* junto al reloj), ideal para trabajar con escritorios virtuales sin que aparezca en el escritorio principal.
+* **Modo Fantasma (100% Invisible y Cero Notificaciones):**  
+  La app de Windows puede operar de forma 100% invisible: al minimizar o cerrar con la 'X', **desaparece tanto de la barra de tareas como de la bandeja del sistema (flecha `^` junto al reloj)**. No interrumpe con ningún tipo de globo ni notificación emergente.
+* **Auto-Conexión y Reapertura Inteligente:**  
+  TowerShare recuerda permanentemente el último celular conectado y se reconecta automáticamente en segundo plano. Si necesitas volver a abrir la ventana de configuración, basta con hacer clic nuevamente en el acceso directo de TowerShare; el proceso invisible detectará la llamada y abrirá la pantalla de inmediato.
 * **Instalador Autónomo (Self-Contained):**  
   Incluye `TowerShare_Setup.exe`, un instalador autónomo que instala la aplicación de forma permanente en tu usuario, crea los accesos directos, permite iniciar con Windows y luego puedes borrar el instalador sin problemas.
 
