@@ -26,8 +26,17 @@ namespace TowerShareWindows
             InitializeComponent();
             _startMinimized = startMinimized;
 
-            notifyIcon.Icon = SystemIcons.Application;
-            Icon = SystemIcons.Application;
+            try
+            {
+                Icon appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+                notifyIcon.Icon = appIcon;
+                Icon = appIcon;
+            }
+            catch
+            {
+                notifyIcon.Icon = SystemIcons.Application;
+                Icon = SystemIcons.Application;
+            }
 
             _reconnectTimer.Interval = 10000;
             _reconnectTimer.Tick += ReconnectTimer_Tick;

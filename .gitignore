@@ -3,6 +3,7 @@
 [Bb]in/
 [Oo]bj/
 windows-client/bin_payload/
+windows-client/bin_installer/
 *.user
 *.suo
 *.userosscache

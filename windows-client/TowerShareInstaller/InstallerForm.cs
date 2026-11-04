@@ -45,7 +45,15 @@ namespace TowerShareInstaller
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 9F);
-            Icon = SystemIcons.Application;
+            try
+            {
+                Icon appIcon = Icon.ExtractAssociatedIcon(Application.ExecutablePath) ?? SystemIcons.Application;
+                Icon = appIcon;
+            }
+            catch
+            {
+                Icon = SystemIcons.Application;
+            }
 
             _lblTitle = new Label
             {
@@ -262,7 +270,8 @@ namespace TowerShareInstaller
 
                 MessageBox.Show(
                     "¡TowerShare se ha instalado con éxito en tu computadora!\n\n" +
-                    "La aplicación ya está activa en segundo plano junto al reloj.\n" +
+                    "La aplicación ya está activa en segundo plano.\n" +
+                    "Usa el atajo global Ctrl + Alt + T para abrir la ventana.\n\n" +
                     "Ya puedes borrar este archivo instalador (TowerShare_Setup.exe).",
                     "Instalación Completa",
                     MessageBoxButtons.OK,
@@ -296,6 +305,7 @@ namespace TowerShareInstaller
                         shortcut.Arguments = arguments;
                         shortcut.WorkingDirectory = Path.GetDirectoryName(targetExePath);
                         shortcut.Description = "TowerShare - Portapapeles Bluetooth";
+                        shortcut.IconLocation = targetExePath + ",0";
                         shortcut.Save();
                     }
                 }

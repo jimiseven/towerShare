@@ -9,6 +9,7 @@
     <RootNamespace>TowerShareWindows</RootNamespace>
     <AssemblyName>TowerShareWindows</AssemblyName>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <ApplicationIcon>app.ico</ApplicationIcon>
   </PropertyGroup>
 
 </Project>
