@@ -16,8 +16,10 @@
   Ambos clientes recuerdan el último texto recibido para evitar bucles infinitos de retroalimentación.
 * **Modo Fantasma (100% Invisible y Cero Notificaciones):**  
   La app de Windows puede operar de forma 100% invisible: al minimizar o cerrar con la 'X', **desaparece tanto de la barra de tareas como de la bandeja del sistema (flecha `^` junto al reloj)**. No interrumpe con ningún tipo de globo ni notificación emergente.
-* **Atajo Global de Teclado (`Ctrl + Alt + Shift + T`):**  
+* **Atajo Global de Teclado (`Ctrl + Alt + T` o `Ctrl + Alt + Shift + T`):**  
   Estés en cualquier programa o escritorio virtual, presiona esta combinación para **mostrar u ocultar la ventana al instante**, sin necesidad de accesos directos ni iconos visibles.
+* **Botón de Cierre Completo:**  
+  La ventana incluye un botón directo para cerrar la aplicación por completo y detener el proceso cuando lo desees.
 * **Auto-Conexión y Reapertura Inteligente:**  
   TowerShare recuerda permanentemente el último celular conectado y se reconecta automáticamente en segundo plano. Si necesitas volver a abrir la ventana de configuración, basta con presionar el atajo o hacer clic nuevamente en el ejecutable/acceso directo; el proceso invisible detectará la llamada y abrirá la pantalla de inmediato.
 * **Instalador Autónomo (Self-Contained):**  

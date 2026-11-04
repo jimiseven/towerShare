@@ -27,6 +27,7 @@ namespace TowerShareWindows
             this.chkStartWithWindows = new System.Windows.Forms.CheckBox();
             this.chkStealthMode = new System.Windows.Forms.CheckBox();
             this.lblHotkeyInfo = new System.Windows.Forms.Label();
+            this.btnExitApp = new System.Windows.Forms.Button();
             this.txtLog = new System.Windows.Forms.TextBox();
             this.notifyIcon = new System.Windows.Forms.NotifyIcon(this.components);
             this.trayContextMenu = new System.Windows.Forms.ContextMenuStrip(this.components);
@@ -55,9 +56,10 @@ namespace TowerShareWindows
             this.grpConnection.Controls.Add(this.chkStartWithWindows);
             this.grpConnection.Controls.Add(this.chkStealthMode);
             this.grpConnection.Controls.Add(this.lblHotkeyInfo);
+            this.grpConnection.Controls.Add(this.btnExitApp);
             this.grpConnection.Location = new System.Drawing.Point(12, 12);
             this.grpConnection.Name = "grpConnection";
-            this.grpConnection.Size = new System.Drawing.Size(460, 220);
+            this.grpConnection.Size = new System.Drawing.Size(460, 250);
             this.grpConnection.TabIndex = 0;
             this.grpConnection.TabStop = false;
             this.grpConnection.Text = "Conexión Bluetooth";
@@ -177,19 +179,33 @@ namespace TowerShareWindows
             this.lblHotkeyInfo.AutoSize = true;
             this.lblHotkeyInfo.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
             this.lblHotkeyInfo.ForeColor = System.Drawing.Color.FromArgb(((int)(((byte)(0)))), ((int)(((byte)(102)))), ((int)(((byte)(204)))));
-            this.lblHotkeyInfo.Location = new System.Drawing.Point(15, 192);
+            this.lblHotkeyInfo.Location = new System.Drawing.Point(15, 190);
             this.lblHotkeyInfo.Name = "lblHotkeyInfo";
-            this.lblHotkeyInfo.Size = new System.Drawing.Size(430, 15);
+            this.lblHotkeyInfo.Size = new System.Drawing.Size(425, 15);
             this.lblHotkeyInfo.TabIndex = 10;
-            this.lblHotkeyInfo.Text = "⌨️ Atajo de teclado: Ctrl + Alt + Shift + T  (para mostrar u ocultar la ventana)";
+            this.lblHotkeyInfo.Text = "⌨️ Atajo de teclado: Ctrl + Alt + T  (o Ctrl + Alt + Shift + T)";
+            // 
+            // btnExitApp
+            // 
+            this.btnExitApp.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(255)))), ((int)(((byte)(235)))), ((int)(((byte)(235)))));
+            this.btnExitApp.FlatStyle = System.Windows.Forms.FlatStyle.Flat;
+            this.btnExitApp.Font = new System.Drawing.Font("Segoe UI", 9F, System.Drawing.FontStyle.Bold);
+            this.btnExitApp.ForeColor = System.Drawing.Color.DarkRed;
+            this.btnExitApp.Location = new System.Drawing.Point(15, 212);
+            this.btnExitApp.Name = "btnExitApp";
+            this.btnExitApp.Size = new System.Drawing.Size(430, 28);
+            this.btnExitApp.TabIndex = 11;
+            this.btnExitApp.Text = "❌ Cerrar TowerShare por Completo";
+            this.btnExitApp.UseVisualStyleBackColor = false;
+            this.btnExitApp.Click += new System.EventHandler(this.BtnExitApp_Click);
             // 
             // grpLog
             // 
             this.grpLog.Controls.Add(this.btnClearLog);
             this.grpLog.Controls.Add(this.txtLog);
-            this.grpLog.Location = new System.Drawing.Point(12, 240);
+            this.grpLog.Location = new System.Drawing.Point(12, 270);
             this.grpLog.Name = "grpLog";
-            this.grpLog.Size = new System.Drawing.Size(460, 190);
+            this.grpLog.Size = new System.Drawing.Size(460, 175);
             this.grpLog.TabIndex = 1;
             this.grpLog.TabStop = false;
             this.grpLog.Text = "Registro de Actividad";
@@ -203,12 +219,12 @@ namespace TowerShareWindows
             this.txtLog.Name = "txtLog";
             this.txtLog.ReadOnly = true;
             this.txtLog.ScrollBars = System.Windows.Forms.ScrollBars.Vertical;
-            this.txtLog.Size = new System.Drawing.Size(430, 130);
+            this.txtLog.Size = new System.Drawing.Size(430, 115);
             this.txtLog.TabIndex = 0;
             // 
             // btnClearLog
             // 
-            this.btnClearLog.Location = new System.Drawing.Point(345, 158);
+            this.btnClearLog.Location = new System.Drawing.Point(345, 142);
             this.btnClearLog.Name = "btnClearLog";
             this.btnClearLog.Size = new System.Drawing.Size(100, 24);
             this.btnClearLog.TabIndex = 1;
@@ -263,7 +279,7 @@ namespace TowerShareWindows
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(7F, 15F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(484, 442);
+            this.ClientSize = new System.Drawing.Size(484, 455);
             this.Controls.Add(this.grpLog);
             this.Controls.Add(this.grpConnection);
             this.FormBorderStyle = System.Windows.Forms.FormBorderStyle.FixedSingle;
@@ -294,6 +310,7 @@ namespace TowerShareWindows
         private System.Windows.Forms.CheckBox chkStartWithWindows;
         private System.Windows.Forms.CheckBox chkStealthMode;
         private System.Windows.Forms.Label lblHotkeyInfo;
+        private System.Windows.Forms.Button btnExitApp;
         private System.Windows.Forms.GroupBox grpLog;
         private System.Windows.Forms.TextBox txtLog;
         private System.Windows.Forms.Button btnClearLog;
