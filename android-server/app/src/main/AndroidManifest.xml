@@ -56,13 +56,15 @@
             </intent-filter>
         </activity>
 
-        <!-- Micro-actividad transparente para inyectar texto al portapapeles con foco -->
+        <!-- Micro-actividad transparente en tarea 100% aislada (nunca trae MainActivity al frente) -->
         <activity
             android:name=".TransparentCopyActivity"
             android:exported="false"
+            android:taskAffinity="com.towershare.app.clip"
+            android:launchMode="singleInstance"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:launchMode="singleTop"
+            android:autoRemoveFromRecents="true"
             android:theme="@style/Theme.TowerShare.Transparent" />
 
         <!-- Receptor para botón de acción rápida en notificaciones -->

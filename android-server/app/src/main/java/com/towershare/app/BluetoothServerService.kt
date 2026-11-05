@@ -11,14 +11,23 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
 import android.content.BroadcastReceiver
+import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import android.content.IntentFilter
 import android.content.pm.ServiceInfo
+import android.graphics.PixelFormat
 import android.os.Build
+import android.os.Handler
 import android.os.IBinder
+import android.os.Looper
 import android.os.PowerManager
 import android.provider.Settings
+import android.view.Gravity
+import android.view.View
+import android.view.WindowManager
+import android.widget.Toast
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
 import kotlinx.coroutines.*
@@ -163,7 +172,7 @@ class BluetoothServerService : Service() {
 
                 lastReceivedText = message
 
-                // Inyección automática al portapapeles sin necesidad de abrir la app
+                // Inyección automática al portapapeles en segundo plano sin abrir MainActivity
                 dispatchToClipboard(message)
 
             } catch (e: Exception) {
@@ -175,7 +184,7 @@ class BluetoothServerService : Service() {
     private fun dispatchToClipboard(text: String) {
         if (Settings.canDrawOverlays(this)) {
             if (isScreenInteractive()) {
-                launchTransparentCopy(text)
+                injectClipboardViaOverlay(text)
             } else {
                 // Si la pantalla está apagada/bloqueada, guardar para inyectar automáticamente al despertar
                 pendingScreenText = text
@@ -186,7 +195,85 @@ class BluetoothServerService : Service() {
         }
     }
 
-    private fun launchTransparentCopy(text: String) {
+    /**
+     * Inyecta el texto al portapapeles mediante un micro-view 1x1 con TYPE_APPLICATION_OVERLAY.
+     * Al NO lanzar una actividad, Android NO mueve ninguna tarea al frente y MainActivity NUNCA se abre.
+     */
+    private fun injectClipboardViaOverlay(text: String) {
+        val mainHandler = Handler(Looper.getMainLooper())
+        mainHandler.post {
+            try {
+                val wm = getSystemService(Context.WINDOW_SERVICE) as WindowManager
+                val layoutParams = WindowManager.LayoutParams(
+                    1,
+                    1,
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O)
+                        WindowManager.LayoutParams.TYPE_APPLICATION_OVERLAY
+                    else
+                        @Suppress("DEPRECATION")
+                        WindowManager.LayoutParams.TYPE_PHONE,
+                    WindowManager.LayoutParams.FLAG_NOT_TOUCH_MODAL or
+                    WindowManager.LayoutParams.FLAG_WATCH_OUTSIDE_TOUCH,
+                    PixelFormat.TRANSLUCENT
+                ).apply {
+                    gravity = Gravity.TOP or Gravity.START
+                    x = 0
+                    y = 0
+                }
+
+                var isFinished = false
+                lateinit var overlayView: View
+
+                val safetyTimeout = Runnable {
+                    if (!isFinished) {
+                        isFinished = true
+                        try { wm.removeView(overlayView) } catch (ignored: Exception) {}
+                        // Fallback con actividad aislada si el overlay no recibió foco
+                        launchIsolatedTransparentActivity(text)
+                    }
+                }
+
+                overlayView = object : View(this) {
+                    override fun onWindowFocusChanged(hasWindowFocus: Boolean) {
+                        super.onWindowFocusChanged(hasWindowFocus)
+                        if (hasWindowFocus && !isFinished) {
+                            isFinished = true
+                            mainHandler.removeCallbacks(safetyTimeout)
+                            try {
+                                val cm = context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
+                                val clip = ClipData.newPlainText("TowerShare", text)
+                                cm.setPrimaryClip(clip)
+                                if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
+                                    Toast.makeText(context, "Copiado al portapapeles desde Windows", Toast.LENGTH_SHORT).show()
+                                }
+                            } catch (e: Exception) {
+                                e.printStackTrace()
+                            } finally {
+                                try { wm.removeView(this) } catch (ignored: Exception) {}
+                            }
+                        }
+                    }
+                }
+
+                overlayView.isFocusable = true
+                overlayView.isFocusableInTouchMode = true
+
+                mainHandler.postDelayed(safetyTimeout, 350)
+                wm.addView(overlayView, layoutParams)
+                overlayView.requestFocus()
+
+            } catch (e: Exception) {
+                e.printStackTrace()
+                launchIsolatedTransparentActivity(text)
+            }
+        }
+    }
+
+    /**
+     * Fallback secundario: lanza TransparentCopyActivity en una tarea 100% aislada
+     * (taskAffinity separada) para que nunca afecte ni traiga a MainActivity.
+     */
+    private fun launchIsolatedTransparentActivity(text: String) {
         try {
             val copyIntent = TransparentCopyActivity.createIntent(this, text)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
@@ -197,7 +284,6 @@ class BluetoothServerService : Service() {
             }
         } catch (e: Exception) {
             e.printStackTrace()
-            // Respaldo en caso de fallo inesperado al abrir la actividad
             showIncomingNotificationWithAction(text)
         }
     }
@@ -216,7 +302,7 @@ class BluetoothServerService : Service() {
                         val text = pendingScreenText
                         if (!text.isNullOrEmpty()) {
                             pendingScreenText = null
-                            launchTransparentCopy(text)
+                            injectClipboardViaOverlay(text)
                         }
                     }
                 }

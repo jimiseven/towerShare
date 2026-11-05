@@ -12,10 +12,10 @@ import android.os.Looper
 import android.widget.Toast
 
 /**
- * Micro-actividad invisible / transparente.
+ * Micro-actividad invisible / transparente en tarea aislada (taskAffinity separada).
  * Adquiere el foco de ventana del sistema operativo durante unos milisegundos
  * para satisfacer la restricción de Android 10/11/12/13/14+ y escribe el texto
- * de forma directa al portapapeles en segundo plano antes de cerrarse inmediatamente.
+ * de forma directa al portapapeles en segundo plano antes de destruirse con finishAndRemoveTask().
  */
 class TransparentCopyActivity : Activity() {
 
@@ -27,8 +27,7 @@ class TransparentCopyActivity : Activity() {
                 putExtra(EXTRA_TEXT, text)
                 addFlags(
                     Intent.FLAG_ACTIVITY_NEW_TASK or
-                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
-                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_MULTIPLE_TASK or
                     Intent.FLAG_ACTIVITY_NO_ANIMATION
                 )
             }
@@ -52,9 +51,9 @@ class TransparentCopyActivity : Activity() {
 
         pendingText = intent.getStringExtra(EXTRA_TEXT)
 
-        // Temporizador de seguridad: si tras 400ms no ha llegado el evento de foco,
-        // intentamos la copia forzada y cerramos para no retener la actividad invisible
-        mainHandler.postDelayed(safetyRunnable, 400)
+        // Temporizador de seguridad: si tras 350ms no ha llegado el evento de foco,
+        // intentamos la copia y cerramos la tarea aislada
+        mainHandler.postDelayed(safetyRunnable, 350)
     }
 
     override fun onNewIntent(intent: Intent?) {
@@ -68,7 +67,7 @@ class TransparentCopyActivity : Activity() {
             performCopy()
         } else {
             mainHandler.removeCallbacks(safetyRunnable)
-            mainHandler.postDelayed(safetyRunnable, 400)
+            mainHandler.postDelayed(safetyRunnable, 350)
         }
     }
 
@@ -113,7 +112,11 @@ class TransparentCopyActivity : Activity() {
     }
 
     override fun finish() {
-        super.finish()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            finishAndRemoveTask()
+        } else {
+            super.finish()
+        }
         disableAnimations()
     }
 
