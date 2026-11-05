@@ -1,5 +1,6 @@
 package com.towershare.app
 
+import android.app.ActivityOptions
 import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
@@ -9,11 +10,14 @@ import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothManager
 import android.bluetooth.BluetoothServerSocket
 import android.bluetooth.BluetoothSocket
+import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.ServiceInfo
 import android.os.Build
 import android.os.IBinder
+import android.os.PowerManager
 import android.provider.Settings
 import androidx.core.app.NotificationCompat
 import androidx.core.app.ServiceCompat
@@ -24,7 +28,9 @@ class BluetoothServerService : Service() {
 
     companion object {
         const val CHANNEL_ID = "towershare_channel"
+        const val CHANNEL_INCOMING_ID = "towershare_incoming_channel"
         const val NOTIFICATION_ID = 1001
+        const val INCOMING_NOTIFICATION_ID = 1002
 
         const val ACTION_START = "ACTION_START"
         const val ACTION_STOP = "ACTION_STOP"
@@ -68,10 +74,13 @@ class BluetoothServerService : Service() {
     private val serviceScope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var serverSocket: BluetoothServerSocket? = null
     private var bluetoothAdapter: BluetoothAdapter? = null
+    private var screenReceiver: BroadcastReceiver? = null
+    private var pendingScreenText: String? = null
 
     override fun onCreate() {
         super.onCreate()
-        createNotificationChannel()
+        createNotificationChannels()
+        registerScreenReceiver()
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
         bluetoothAdapter = bluetoothManager.adapter
     }
@@ -154,7 +163,7 @@ class BluetoothServerService : Service() {
 
                 lastReceivedText = message
 
-                // Opción B: Inyectar al portapapeles mediante micro-actividad transparente
+                // Inyección automática al portapapeles sin necesidad de abrir la app
                 dispatchToClipboard(message)
 
             } catch (e: Exception) {
@@ -164,14 +173,87 @@ class BluetoothServerService : Service() {
     }
 
     private fun dispatchToClipboard(text: String) {
-        // Si el usuario autorizó 'Aparecer encima', abrimos la actividad transparente instantánea
         if (Settings.canDrawOverlays(this)) {
-            val copyIntent = TransparentCopyActivity.createIntent(this, text)
-            startActivity(copyIntent)
+            if (isScreenInteractive()) {
+                launchTransparentCopy(text)
+            } else {
+                // Si la pantalla está apagada/bloqueada, guardar para inyectar automáticamente al despertar
+                pendingScreenText = text
+            }
         } else {
-            // Si por alguna razón no otorgó el permiso, se actualiza la notificación para copiar al pulsar
-            updateNotificationWithAction("Toca para copiar: ${text.take(30)}...", text)
+            // Si el usuario aún no autorizó 'Aparecer encima', ofrecer botón rápido en notificación
+            showIncomingNotificationWithAction(text)
         }
+    }
+
+    private fun launchTransparentCopy(text: String) {
+        try {
+            val copyIntent = TransparentCopyActivity.createIntent(this, text)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                val options = ActivityOptions.makeBasic()
+                startActivity(copyIntent, options.toBundle())
+            } else {
+                startActivity(copyIntent)
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            // Respaldo en caso de fallo inesperado al abrir la actividad
+            showIncomingNotificationWithAction(text)
+        }
+    }
+
+    private fun isScreenInteractive(): Boolean {
+        val pm = getSystemService(Context.POWER_SERVICE) as? PowerManager
+        return pm?.isInteractive ?: true
+    }
+
+    private fun registerScreenReceiver() {
+        if (screenReceiver == null) {
+            screenReceiver = object : BroadcastReceiver() {
+                override fun onReceive(context: Context, intent: Intent?) {
+                    val action = intent?.action
+                    if (action == Intent.ACTION_USER_PRESENT || action == Intent.ACTION_SCREEN_ON) {
+                        val text = pendingScreenText
+                        if (!text.isNullOrEmpty()) {
+                            pendingScreenText = null
+                            launchTransparentCopy(text)
+                        }
+                    }
+                }
+            }
+            val filter = IntentFilter().apply {
+                addAction(Intent.ACTION_USER_PRESENT)
+                addAction(Intent.ACTION_SCREEN_ON)
+            }
+            registerReceiver(screenReceiver, filter)
+        }
+    }
+
+    private fun showIncomingNotificationWithAction(text: String) {
+        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+        val copyIntent = ClipboardActionReceiver.createIntent(this, text, INCOMING_NOTIFICATION_ID)
+        val pendingIntent = PendingIntent.getBroadcast(
+            this,
+            0,
+            copyIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        val preview = if (text.length > 50) text.take(50) + "..." else text
+
+        val notification = NotificationCompat.Builder(this, CHANNEL_INCOMING_ID)
+            .setContentTitle("📋 Texto recibido desde Windows")
+            .setContentText(preview)
+            .setStyle(NotificationCompat.BigTextStyle().bigText(text))
+            .setSmallIcon(R.drawable.ic_stat_sync)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .addAction(R.drawable.ic_stat_sync, "📋 Copiar", pendingIntent)
+            .build()
+
+        manager.notify(INCOMING_NOTIFICATION_ID, notification)
     }
 
     private fun startForegroundServiceNotification(statusText: String) {
@@ -193,28 +275,6 @@ class BluetoothServerService : Service() {
         manager.notify(NOTIFICATION_ID, buildNotification(statusText))
     }
 
-    private fun updateNotificationWithAction(statusText: String, fullText: String) {
-        val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-        val copyIntent = TransparentCopyActivity.createIntent(this, fullText)
-        val pendingIntent = PendingIntent.getActivity(
-            this,
-            0,
-            copyIntent,
-            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
-        )
-
-        val notification = NotificationCompat.Builder(this, CHANNEL_ID)
-            .setContentTitle(getString(R.string.service_title))
-            .setContentText(statusText)
-            .setSmallIcon(R.drawable.ic_stat_sync)
-            .setContentIntent(pendingIntent)
-            .setAutoCancel(true)
-            .setPriority(NotificationCompat.PRIORITY_HIGH)
-            .build()
-
-        manager.notify(NOTIFICATION_ID, notification)
-    }
-
     private fun buildNotification(statusText: String): Notification {
         val openAppIntent = Intent(this, MainActivity::class.java)
         val pendingIntent = PendingIntent.getActivity(
@@ -234,17 +294,28 @@ class BluetoothServerService : Service() {
             .build()
     }
 
-    private fun createNotificationChannel() {
+    private fun createNotificationChannels() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
+            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+
+            val mainChannel = NotificationChannel(
                 CHANNEL_ID,
                 "TowerShare Servicio",
                 NotificationManager.IMPORTANCE_LOW
             ).apply {
                 description = "Mantiene activa la sincronización de portapapeles con Windows"
             }
-            val manager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-            manager.createNotificationChannel(channel)
+
+            val incomingChannel = NotificationChannel(
+                CHANNEL_INCOMING_ID,
+                "TowerShare Textos Recibidos",
+                NotificationManager.IMPORTANCE_HIGH
+            ).apply {
+                description = "Notificaciones con botón de copia rápida al recibir texto"
+            }
+
+            manager.createNotificationChannel(mainChannel)
+            manager.createNotificationChannel(incomingChannel)
         }
     }
 
@@ -260,6 +331,10 @@ class BluetoothServerService : Service() {
         connectedDeviceName = null
         try { serverSocket?.close() } catch (ignored: Exception) {}
         try { activeSocket?.close() } catch (ignored: Exception) {}
+        if (screenReceiver != null) {
+            try { unregisterReceiver(screenReceiver) } catch (ignored: Exception) {}
+            screenReceiver = null
+        }
         serviceScope.cancel()
         notifyState()
         stopForeground(STOP_FOREGROUND_REMOVE)

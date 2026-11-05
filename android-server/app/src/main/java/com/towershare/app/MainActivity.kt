@@ -95,6 +95,27 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun checkAndStartService() {
+        if (!Settings.canDrawOverlays(this)) {
+            androidx.appcompat.app.AlertDialog.Builder(this)
+                .setTitle("Copia Automática en Segundo Plano")
+                .setMessage("Para que el texto enviado desde tu computadora se copie automáticamente en este celular sin tener que abrir la app, autoriza el permiso 'Aparecer encima'.\n\n¿Deseas activarlo ahora?")
+                .setPositiveButton("Activar Permiso") { _, _ ->
+                    val intent = Intent(
+                        Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                        Uri.parse("package:$packageName")
+                    )
+                    startActivity(intent)
+                }
+                .setNegativeButton("Continuar") { _, _ ->
+                    proceedWithRuntimePermissions()
+                }
+                .show()
+        } else {
+            proceedWithRuntimePermissions()
+        }
+    }
+
+    private fun proceedWithRuntimePermissions() {
         val permissionsToRequest = mutableListOf<String>()
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {

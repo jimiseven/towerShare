@@ -12,11 +12,11 @@
 
     <string name="btn_start_service">Iniciar Servidor</string>
     <string name="btn_stop_service">Detener Servidor</string>
-    <string name="btn_grant_overlay">Autorizar \"Aparecer encima\" (Opción B)</string>
+    <string name="btn_grant_overlay">Autorizar \"Aparecer encima\"</string>
     <string name="btn_bt_settings">Abrir Ajustes Bluetooth</string>
 
-    <string name="overlay_info_title">Permiso Especial (Opción B)</string>
-    <string name="overlay_info_desc">Para que Android copie automáticamente al portapapeles sin pedir confirmación cada vez que Windows envíe texto, se requiere el permiso de \"Aparecer encima\".</string>
+    <string name="overlay_info_title">Copia Automática en Segundo Plano</string>
+    <string name="overlay_info_desc">Para que Android copie directamente al portapapeles en segundo plano sin pedir confirmación ni tener que abrir la app, autoriza el permiso de \"Aparecer encima\".</string>
 
     <string name="perm_bt_needed">Se requieren permisos de Bluetooth para sincronizar.</string>
     <string name="toast_sent_to_windows">Enviado a Windows por Bluetooth</string>

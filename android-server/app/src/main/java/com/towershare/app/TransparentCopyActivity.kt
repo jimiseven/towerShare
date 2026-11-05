@@ -7,12 +7,15 @@ import android.content.Context
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.widget.Toast
 
 /**
- * Micro-actividad invisible / transparente (Opción B).
- * Adquiere el foco de pantalla durante unos milisegundos para satisfacer
- * la restricción de Android 12/13/14 y escribe el texto en el portapapeles local.
+ * Micro-actividad invisible / transparente.
+ * Adquiere el foco de ventana del sistema operativo durante unos milisegundos
+ * para satisfacer la restricción de Android 10/11/12/13/14+ y escribe el texto
+ * de forma directa al portapapeles en segundo plano antes de cerrarse inmediatamente.
  */
 class TransparentCopyActivity : Activity() {
 
@@ -22,29 +25,71 @@ class TransparentCopyActivity : Activity() {
         fun createIntent(context: Context, text: String): Intent {
             return Intent(context, TransparentCopyActivity::class.java).apply {
                 putExtra(EXTRA_TEXT, text)
-                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP or Intent.FLAG_ACTIVITY_NO_ANIMATION)
+                addFlags(
+                    Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP or
+                    Intent.FLAG_ACTIVITY_NO_ANIMATION
+                )
             }
+        }
+    }
+
+    private var pendingText: String? = null
+    private var isCopied = false
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val safetyRunnable = Runnable {
+        if (!isCopied) {
+            performCopy()
+        } else if (!isFinishing) {
+            finish()
         }
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
-            overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
-        } else {
-            @Suppress("DEPRECATION")
-            overridePendingTransition(0, 0)
-        }
+        disableAnimations()
 
-        val text = intent.getStringExtra(EXTRA_TEXT)
+        pendingText = intent.getStringExtra(EXTRA_TEXT)
+
+        // Temporizador de seguridad: si tras 400ms no ha llegado el evento de foco,
+        // intentamos la copia forzada y cerramos para no retener la actividad invisible
+        mainHandler.postDelayed(safetyRunnable, 400)
+    }
+
+    override fun onNewIntent(intent: Intent?) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        pendingText = intent?.getStringExtra(EXTRA_TEXT)
+        isCopied = false
+
+        if (hasWindowFocus()) {
+            mainHandler.removeCallbacks(safetyRunnable)
+            performCopy()
+        } else {
+            mainHandler.removeCallbacks(safetyRunnable)
+            mainHandler.postDelayed(safetyRunnable, 400)
+        }
+    }
+
+    override fun onWindowFocusChanged(hasFocus: Boolean) {
+        super.onWindowFocusChanged(hasFocus)
+        if (hasFocus && !isCopied) {
+            mainHandler.removeCallbacks(safetyRunnable)
+            performCopy()
+        }
+    }
+
+    private fun performCopy() {
+        if (isCopied) return
+        val text = pendingText
         if (!text.isNullOrEmpty()) {
             try {
                 val clipboard = getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager
                 val clip = ClipData.newPlainText("TowerShare", text)
                 clipboard.setPrimaryClip(clip)
 
-                // En Android 12 y anteriores, mostramos un Toast rápido si no hay preview nativo
+                // En Android 12 y anteriores mostramos confirmación visual rápida (en Android 13+ el SO ya muestra el preview nativo)
                 if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) {
                     Toast.makeText(this, "Copiado al portapapeles desde Windows", Toast.LENGTH_SHORT).show()
                 }
@@ -52,17 +97,28 @@ class TransparentCopyActivity : Activity() {
                 e.printStackTrace()
             }
         }
-
+        isCopied = true
         finish()
     }
 
-    override fun finish() {
-        super.finish()
+    private fun disableAnimations() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            overrideActivityTransition(OVERRIDE_TRANSITION_OPEN, 0, 0)
             overrideActivityTransition(OVERRIDE_TRANSITION_CLOSE, 0, 0)
         } else {
             @Suppress("DEPRECATION")
             overridePendingTransition(0, 0)
         }
+        window?.setWindowAnimations(0)
+    }
+
+    override fun finish() {
+        super.finish()
+        disableAnimations()
+    }
+
+    override fun onDestroy() {
+        mainHandler.removeCallbacks(safetyRunnable)
+        super.onDestroy()
     }
 }

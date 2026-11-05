@@ -20,9 +20,9 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@drawable/ic_share_pc"
+        android:icon="@drawable/ic_app_icon"
         android:label="@string/app_name"
-        android:roundIcon="@drawable/ic_share_pc"
+        android:roundIcon="@drawable/ic_app_icon"
         android:supportsRtl="true"
         android:theme="@style/Theme.TowerShare">
 
@@ -56,13 +56,19 @@
             </intent-filter>
         </activity>
 
-        <!-- Micro-actividad transparente para inyectar texto al portapapeles con foco (Opción B) -->
+        <!-- Micro-actividad transparente para inyectar texto al portapapeles con foco -->
         <activity
             android:name=".TransparentCopyActivity"
             android:exported="false"
             android:excludeFromRecents="true"
             android:noHistory="true"
+            android:launchMode="singleTop"
             android:theme="@style/Theme.TowerShare.Transparent" />
+
+        <!-- Receptor para botón de acción rápida en notificaciones -->
+        <receiver
+            android:name=".ClipboardActionReceiver"
+            android:exported="false" />
 
     </application>
 
